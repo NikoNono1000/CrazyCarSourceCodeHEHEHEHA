@@ -4,12 +4,17 @@
 int myFunction(int, int);
 
 void setup() {
-  // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+  //Pins definieren
+  //Serielle Schnittstelle starten
+  //Sensoren initialisieren
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  //Start/Stopp Bedingungen prüfen
+  //IR Sensoren auslesen
+  //Daten aus Sensoredaten berechnen
+  //Motoren per PWM Ansteuern
+  //Schauen ob Not-Aus gedrückt wurde
 }
 
 // put function definitions here:

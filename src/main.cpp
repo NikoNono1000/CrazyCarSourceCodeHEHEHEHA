@@ -1,32 +1,37 @@
+// Saubere, einzelne Version der Datei (alle Duplikate entfernt)
 #include <Arduino.h>
 
-// --- Pin definitions (change as needed) ---
-// PWM outputs for motor speed (use LEDC channels)
-const int MOTOR_A_PWM_PIN = 18; // PWM pin for Motor A (ledc channel 0)
-const int MOTOR_B_PWM_PIN = 19; // PWM pin for Motor B (ledc channel 1)
+// --- Pin-Definitionen (bei Bedarf anpassen) ---
+// PWM-Ausgänge für Motorgeschwindigkeit (LEDC-Kanäle verwenden)
+const int MOTOR_A_PWM_PIN = 18; // PWM-Pin für Motor A (ledc Kanal 0)
+const int MOTOR_B_PWM_PIN = 19; // PWM-Pin für Motor B (ledc Kanal 1)
 
-// Direction pins for motors (H-bridge direction inputs)
+// Richtungspins für Motoren (H-Brücke: Richtungseingänge)
 const int MOTOR_A_DIR_PIN = 5;
 const int MOTOR_B_DIR_PIN = 17;
 
-// IR sensors (analog-capable pins recommended)
-const int IR_FRONT_PIN = 34; // frontal sensor (ADC1)
-const int IR_LEFT_PIN  = 35; // left-45deg sensor (ADC1)
-const int IR_RIGHT_PIN = 32; // right-45deg sensor (ADC1)
+// IR-Sensoren (analogfähige Pins empfohlen)
+const int IR_FRONT_PIN = 34; // Frontsensor (ADC1)
+const int IR_LEFT_PIN  = 35; // Links 45°
+const int IR_RIGHT_PIN = 32; // Rechts 45°
 
-// PWM / LEDC settings
+// START- und Notaustaster (als INPUT_PULLUP erwartet: kurz nach GND = aktiviert)
+const int START_PIN     = 14; // Taste zum Starten/Stoppen
+const int EMERGENCY_PIN = 13; // Notausschalter
+
+// PWM / LEDC-Einstellungen
 const int MOTOR_A_CHANNEL = 0;
 const int MOTOR_B_CHANNEL = 1;
 const int PWM_FREQ = 20000; // 20 kHz
-const int PWM_RESOLUTION = 8; // 8-bit resolution (0-255)
+const int PWM_RESOLUTION = 8; // 8-bit Auflösung (0-255)
 const int MAX_DUTY = (1 << PWM_RESOLUTION) - 1; // 255
 
-// Behavior tuning
-const int BASE_SPEED_PERCENT = 60; // default forward speed (0-100)
-int FRONT_THRESHOLD = 1500; // ADC threshold for frontal obstacle (0-4095)
-int SIDE_THRESHOLD  = 1500; // ADC threshold for left/right sensors
+// Verhaltenseinstellungen
+const int BASE_SPEED_PERCENT = 60; // Standardvorwärtsgeschwindigkeit (0-100)
+int FRONT_THRESHOLD = 1500; // ADC-Schwelle für Hindernis vorn (0-4095)
+int SIDE_THRESHOLD  = 1500; // ADC-Schwelle für seitliche Sensoren
 
-// Helper: set motor speed and direction
+// Hilfsfunktion: Motorgeschwindigkeit und -richtung setzen
 void setMotor(int channel, int dirPin, int speedPercent, bool forward) {
   speedPercent = constrain(speedPercent, 0, 100);
   int duty = map(speedPercent, 0, 100, 0, MAX_DUTY);
@@ -44,18 +49,22 @@ void setup() {
   delay(200);
   Serial.println("ESP32 Motor+IR starting...");
 
-  // Configure direction pins
+  // Richtungspins konfigurieren
   pinMode(MOTOR_A_DIR_PIN, OUTPUT);
   pinMode(MOTOR_B_DIR_PIN, OUTPUT);
 
-  // Configure LEDC PWM channels and attach pins
+  // START- und Notaustaster als INPUT_PULLUP konfigurieren
+  pinMode(START_PIN, INPUT_PULLUP);
+  pinMode(EMERGENCY_PIN, INPUT_PULLUP);
+
+  // LEDC-PWM-Kanäle konfigurieren und Pins zuordnen
   ledcSetup(MOTOR_A_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
   ledcAttachPin(MOTOR_A_PWM_PIN, MOTOR_A_CHANNEL);
 
   ledcSetup(MOTOR_B_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
   ledcAttachPin(MOTOR_B_PWM_PIN, MOTOR_B_CHANNEL);
 
-  // Print initial sensor values to help calibration
+  // Anfangswerte der Sensoren ausgeben zur Kalibrierung
   Serial.println("Initial sensor readings (calibrate thresholds if needed):");
   delay(100);
   int f = analogRead(IR_FRONT_PIN);
@@ -66,12 +75,7 @@ void setup() {
 
 void loop() {
   // --- Start/Stopp Bedingungen prüfen ---
-  // START_PIN: Taster (aktiv LOW) zum Starten/Stoppen
-  // EMERGENCY_PIN: Notausschalter (aktiv LOW)
-  const int START_PIN = 14;      // anpassen falls erforderlich
-  const int EMERGENCY_PIN = 13;  // anpassen falls erforderlich
-
-  // Not-Aus prüfen (höchste Priorität)
+  // Not-Aus prüfen (höchste Priorität). Notaustaster aktiv = LOW (INPUT_PULLUP)
   if (digitalRead(EMERGENCY_PIN) == LOW) {
     stopMotors();
     Serial.println("NOT-AUS aktiviert: Motoren gestoppt");
@@ -79,7 +83,8 @@ void loop() {
     return; // nichts weiter tun solange Notausschalter aktiv ist
   }
 
-  bool started = (digitalRead(START_PIN) == LOW); // Taster aktiv LOW
+  // Starttaste prüfen (aktiv LOW)
+  bool started = (digitalRead(START_PIN) == LOW);
   if (!started) {
     // Wenn nicht gestartet, Motoren anhalten und nichts weiter tun
     stopMotors();
@@ -92,12 +97,12 @@ void loop() {
   int rightRaw = analogRead(IR_RIGHT_PIN);
 
   // --- Daten aus Sensoredaten berechnen ---
-  // Wir berechnen hier eine einfache Näherungs-"Proximity"-Skala 0..100
+  // Näherungs-"Proximity"-Skala 0..100 zur einfachen Anzeige
   int frontPct = map(frontRaw, 0, 4095, 0, 100);
   int leftPct  = map(leftRaw,  0, 4095, 0, 100);
   int rightPct = map(rightRaw, 0, 4095, 0, 100);
 
-  // Debug: kurz ausgeben
+  // Debug: Sensorwerte ausgeben (alle 500 ms)
   static unsigned long lastDbg = 0;
   if (millis() - lastDbg > 500) {
     Serial.printf("Sensoren (raw): F=%d L=%d R=%d | prox: F=%d L=%d R=%d\n",
@@ -116,7 +121,7 @@ void loop() {
     setMotor(MOTOR_A_CHANNEL, MOTOR_A_DIR_PIN, BASE_SPEED_PERCENT, true);
     setMotor(MOTOR_B_CHANNEL, MOTOR_B_DIR_PIN, BASE_SPEED_PERCENT, true);
   } else {
-    // Hindernis vorn
+    // Hindernis vorn erkannt
     if (obstacleLeft && !obstacleRight) {
       // Hindernis vorn+links -> nach rechts drehen
       Serial.println("Ausweichmanöver: Rechts drehen (Hindernis vorn+links)");
@@ -144,7 +149,4 @@ void loop() {
   delay(20);
 }
 
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
-} 
+// Hier Funktionsdefinitionen (Beispiel)

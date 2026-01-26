@@ -1,152 +1,88 @@
-// Saubere, einzelne Version der Datei (alle Duplikate entfernt)
+// =======================
+// ESP32 Kettenfahrzeug
+// Geradeaus fahren
+// =======================
 #include <Arduino.h>
 
-// --- Pin-Definitionen (bei Bedarf anpassen) ---
-// PWM-Ausgänge für Motorgeschwindigkeit (LEDC-Kanäle verwenden)
-const int MOTOR_A_PWM_PIN = 18; // PWM-Pin für Motor A (ledc Kanal 0)
-const int MOTOR_B_PWM_PIN = 19; // PWM-Pin für Motor B (ledc Kanal 1)
+// Motor links (54 mm)
+#define PWM_LEFT   25
+#define DIR_LEFT   26
 
-// Richtungspins für Motoren (H-Brücke: Richtungseingänge)
-const int MOTOR_A_DIR_PIN = 5;
-const int MOTOR_B_DIR_PIN = 17;
+// Motor rechts (35,01 mm)
+#define PWM_RIGHT  27
+#define DIR_RIGHT  14
 
-// IR-Sensoren (analogfähige Pins empfohlen)
-const int IR_FRONT_PIN = 34; // Frontsensor (ADC1)
-const int IR_LEFT_PIN  = 35; // Links 45°
-const int IR_RIGHT_PIN = 32; // Rechts 45°
+// Buttons
+#define BTN_START  32
+#define BTN_STOP   33
 
-// START- und Notaustaster (als INPUT_PULLUP erwartet: kurz nach GND = aktiviert)
-const int START_PIN     = 14; // Taste zum Starten/Stoppen
-const int EMERGENCY_PIN = 13; // Notausschalter
+// Parameter
+#define BASE_SPEED 120
+#define SCALE_SMALL 1.543
 
-// PWM / LEDC-Einstellungen
-const int MOTOR_A_CHANNEL = 0;
-const int MOTOR_B_CHANNEL = 1;
-const int PWM_FREQ = 20000; // 20 kHz
-const int PWM_RESOLUTION = 8; // 8-bit Auflösung (0-255)
-const int MAX_DUTY = (1 << PWM_RESOLUTION) - 1; // 255
+bool driving = false;
 
-// Verhaltenseinstellungen
-const int BASE_SPEED_PERCENT = 60; // Standardvorwärtsgeschwindigkeit (0-100)
-int FRONT_THRESHOLD = 1500; // ADC-Schwelle für Hindernis vorn (0-4095)
-int SIDE_THRESHOLD  = 1500; // ADC-Schwelle für seitliche Sensoren
-
-// Hilfsfunktion: Motorgeschwindigkeit und -richtung setzen
-void setMotor(int channel, int dirPin, int speedPercent, bool forward) {
-  speedPercent = constrain(speedPercent, 0, 100);
-  int duty = map(speedPercent, 0, 100, 0, MAX_DUTY);
-  digitalWrite(dirPin, forward ? HIGH : LOW);
-  ledcWrite(channel, duty);
-}
-
-void stopMotors() {
-  ledcWrite(MOTOR_A_CHANNEL, 0);
-  ledcWrite(MOTOR_B_CHANNEL, 0);
-}
+// PWM Kanäle
+#define CH_LEFT  0
+#define CH_RIGHT 1
 
 void setup() {
-  Serial.begin(115200);
-  delay(200);
-  Serial.println("ESP32 Motor+IR starting...");
+  // Motorpins
+  pinMode(DIR_LEFT, OUTPUT);
+  pinMode(DIR_RIGHT, OUTPUT);
 
-  // Richtungspins konfigurieren
-  pinMode(MOTOR_A_DIR_PIN, OUTPUT);
-  pinMode(MOTOR_B_DIR_PIN, OUTPUT);
+  // Buttons
+  pinMode(BTN_START, INPUT_PULLUP);
+  pinMode(BTN_STOP, INPUT_PULLUP);
 
-  // START- und Notaustaster als INPUT_PULLUP konfigurieren
-  pinMode(START_PIN, INPUT_PULLUP);
-  pinMode(EMERGENCY_PIN, INPUT_PULLUP);
+  // PWM Setup ESP32
+  ledcSetup(CH_LEFT,  20000, 8); // 20 kHz, 8 Bit
+  ledcSetup(CH_RIGHT, 20000, 8);
 
-  // LEDC-PWM-Kanäle konfigurieren und Pins zuordnen
-  ledcSetup(MOTOR_A_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
-  ledcAttachPin(MOTOR_A_PWM_PIN, MOTOR_A_CHANNEL);
+  ledcAttachPin(PWM_LEFT,  CH_LEFT);
+  ledcAttachPin(PWM_RIGHT, CH_RIGHT);
 
-  ledcSetup(MOTOR_B_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
-  ledcAttachPin(MOTOR_B_PWM_PIN, MOTOR_B_CHANNEL);
-
-  // Anfangswerte der Sensoren ausgeben zur Kalibrierung
-  Serial.println("Initial sensor readings (calibrate thresholds if needed):");
-  delay(100);
-  int f = analogRead(IR_FRONT_PIN);
-  int l = analogRead(IR_LEFT_PIN);
-  int r = analogRead(IR_RIGHT_PIN);
-  Serial.printf(" Front=%d  Left=%d  Right=%d\n", f, l, r);
+  stopMotors();
 }
 
 void loop() {
-  // --- Start/Stopp Bedingungen prüfen ---
-  // Not-Aus prüfen (höchste Priorität). Notaustaster aktiv = LOW (INPUT_PULLUP)
-  if (digitalRead(EMERGENCY_PIN) == LOW) {
-    stopMotors();
-    Serial.println("NOT-AUS aktiviert: Motoren gestoppt");
-    delay(100);
-    return; // nichts weiter tun solange Notausschalter aktiv ist
+  // Start gedrückt?
+  if (digitalRead(BTN_START) == LOW) {
+    driving = true;
   }
 
-  // Starttaste prüfen (aktiv LOW)
-  bool started = (digitalRead(START_PIN) == LOW);
-  if (!started) {
-    // Wenn nicht gestartet, Motoren anhalten und nichts weiter tun
-    stopMotors();
-    return;
+  // Stop gedrückt?
+  if (digitalRead(BTN_STOP) == LOW) {
+    driving = false;
   }
 
-  // --- IR Sensoren auslesen ---
-  int frontRaw = analogRead(IR_FRONT_PIN); // 0..4095
-  int leftRaw  = analogRead(IR_LEFT_PIN);
-  int rightRaw = analogRead(IR_RIGHT_PIN);
-
-  // --- Daten aus Sensoredaten berechnen ---
-  // Näherungs-"Proximity"-Skala 0..100 zur einfachen Anzeige
-  int frontPct = map(frontRaw, 0, 4095, 0, 100);
-  int leftPct  = map(leftRaw,  0, 4095, 0, 100);
-  int rightPct = map(rightRaw, 0, 4095, 0, 100);
-
-  // Debug: Sensorwerte ausgeben (alle 500 ms)
-  static unsigned long lastDbg = 0;
-  if (millis() - lastDbg > 500) {
-    Serial.printf("Sensoren (raw): F=%d L=%d R=%d | prox: F=%d L=%d R=%d\n",
-                  frontRaw, leftRaw, rightRaw, frontPct, leftPct, rightPct);
-    lastDbg = millis();
-  }
-
-  // --- Motoren per PWM ansteuern ---
-  // Einfache reaktive Logik basierend auf Schwellenwerten
-  bool obstacleFront = (frontRaw >= FRONT_THRESHOLD);
-  bool obstacleLeft  = (leftRaw  >= SIDE_THRESHOLD);
-  bool obstacleRight = (rightRaw >= SIDE_THRESHOLD);
-
-  if (!obstacleFront) {
-    // Weg frei -> vorwärts
-    setMotor(MOTOR_A_CHANNEL, MOTOR_A_DIR_PIN, BASE_SPEED_PERCENT, true);
-    setMotor(MOTOR_B_CHANNEL, MOTOR_B_DIR_PIN, BASE_SPEED_PERCENT, true);
+  if (driving) {
+    driveForward(BASE_SPEED);
   } else {
-    // Hindernis vorn erkannt
-    if (obstacleLeft && !obstacleRight) {
-      // Hindernis vorn+links -> nach rechts drehen
-      Serial.println("Ausweichmanöver: Rechts drehen (Hindernis vorn+links)");
-      setMotor(MOTOR_A_CHANNEL, MOTOR_A_DIR_PIN, BASE_SPEED_PERCENT, true);
-      setMotor(MOTOR_B_CHANNEL, MOTOR_B_DIR_PIN, BASE_SPEED_PERCENT, false);
-    } else if (obstacleRight && !obstacleLeft) {
-      // Hindernis vorn+rechts -> nach links drehen
-      Serial.println("Ausweichmanöver: Links drehen (Hindernis vorn+rechts)");
-      setMotor(MOTOR_A_CHANNEL, MOTOR_A_DIR_PIN, BASE_SPEED_PERCENT, false);
-      setMotor(MOTOR_B_CHANNEL, MOTOR_B_DIR_PIN, BASE_SPEED_PERCENT, true);
-    } else {
-      // Hindernis überall oder nur vorn -> kurz rückwärts und drehen
-      Serial.println("Ausweichmanöver: Rückwärts + Drehen (Hindernis vorn)");
-      setMotor(MOTOR_A_CHANNEL, MOTOR_A_DIR_PIN, 50, false);
-      setMotor(MOTOR_B_CHANNEL, MOTOR_B_DIR_PIN, 50, false);
-      delay(300);
-      // Drehung auf der Stelle
-      setMotor(MOTOR_A_CHANNEL, MOTOR_A_DIR_PIN, BASE_SPEED_PERCENT, true);
-      setMotor(MOTOR_B_CHANNEL, MOTOR_B_DIR_PIN, BASE_SPEED_PERCENT, false);
-      delay(300);
-    }
+    stopMotors();
   }
 
-  // Kurze Verzögerung für Regelschleife
-  delay(20);
+  delay(10); // Entprellung light
 }
 
-// Hier Funktionsdefinitionen (Beispiel)
+// =======================
+// Funktionen
+// =======================
+
+void driveForward(int speed) {
+  int speedLeft  = speed;
+  int speedRight = speed * SCALE_SMALL;
+
+  speedRight = constrain(speedRight, 0, 255);
+
+  digitalWrite(DIR_LEFT, HIGH);   // Richtung vorwärts
+  digitalWrite(DIR_RIGHT, HIGH);
+
+  ledcWrite(CH_LEFT,  speedLeft);
+  ledcWrite(CH_RIGHT, speedRight);
+}
+
+void stopMotors() {
+  ledcWrite(CH_LEFT,  0);
+  ledcWrite(CH_RIGHT, 0);
+}

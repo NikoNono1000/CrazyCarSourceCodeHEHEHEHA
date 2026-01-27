@@ -15,10 +15,10 @@
 
 
 
-#define Pin_19 19; // 
-#define Pin_21 21; //
-#define Pin_22 22; //
-#define Pin_23 23; //
+#define Pin_19 19 // 
+#define Pin_21 21 //
+#define Pin_22 22 //
+#define Pin_23 23 //
 
 #define IR_SENSOR_PIN 34      // Sensor-Ausgang
 #define IR_SENSOR_VCC_PIN 32  // Sensor-Versorgung
@@ -49,6 +49,7 @@ void setup() {
     Serial.println("Serial funktioniert!");
     delay(1000);
   }
+  /*
   pinMode(IR_SENSOR_PIN, INPUT);
   pinMode(IR_SENSOR_VCC_PIN, OUTPUT);
   digitalWrite(IR_SENSOR_VCC_PIN, HIGH); // 3.3V anlegen (GPIO HIGH)
@@ -65,10 +66,10 @@ void setup() {
     Serial.print("Verbunden! ESP32 IP: ");
     Serial.println(WiFi.localIP());
     delay(2000);
-  }
+  }*/
   pinMode(Pin_19, OUTPUT);
   digitalWrite(Pin_19, HIGH);
-   }
+  
   pinMode(Pin_21, OUTPUT);
   digitalWrite(Pin_21, LOW);
    
@@ -83,7 +84,7 @@ void setup() {
 }
 
 void loop() {
-  server.handleClient();
+ /* server.handleClient();
 
   // Serial-Ausgabe alle 200ms
   if (millis() - lastSerialPrint >= serialInterval) {
@@ -92,4 +93,5 @@ void loop() {
     Serial.println(sensorValue);
     lastSerialPrint = millis();
   }
+    */
 }

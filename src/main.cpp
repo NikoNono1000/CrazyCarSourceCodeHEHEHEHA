@@ -1,88 +1,63 @@
-// =======================
-// ESP32 Kettenfahrzeug
-// Geradeaus fahren
-// =======================
 #include <Arduino.h>
+#include <WiFi.h>
+#include <WebServer.h>
 
-// Motor links (54 mm)
-#define PWM_LEFT   25
-#define DIR_LEFT   26
+#define IR_SENSOR_PIN 34      // Sensor-Ausgang
+#define IR_SENSOR_VCC_PIN 32  // Sensor-Versorgung
 
-// Motor rechts (35,01 mm)
-#define PWM_RIGHT  27
-#define DIR_RIGHT  14
+const char* ssid = "Niko_wifi";         // <-- hier anpassen
+const char* password = "N1224M0525R0908!"; // <-- hier anpassen
 
-// Buttons
-#define BTN_START  32
-#define BTN_STOP   33
+WebServer server(80);
 
-// Parameter
-#define BASE_SPEED 120
-#define SCALE_SMALL 1.543
+unsigned long lastSerialPrint = 0;
+const unsigned long serialInterval = 200; // ms
 
-bool driving = false;
-
-// PWM Kanäle
-#define CH_LEFT  0
-#define CH_RIGHT 1
+void handleRoot() {
+  int sensorValue = analogRead(IR_SENSOR_PIN);
+  String html = "<html><head><meta http-equiv='refresh' content='0.5'></head><body>";
+  html += "<h1>IR Sensor Wert: ";
+  html += sensorValue;
+  html += "</h1>";
+  html += "<p>ESP32 IP: ";
+  html += WiFi.localIP().toString();
+  html += "</p></body></html>";
+  server.send(200, "text/html", html);
+}
 
 void setup() {
-  // Motorpins
-  pinMode(DIR_LEFT, OUTPUT);
-  pinMode(DIR_RIGHT, OUTPUT);
+  Serial.begin(115200);
+  for (int i = 0; i < 10; ++i) {
+    Serial.println("Serial funktioniert!");
+    delay(1000);
+  }
+  pinMode(IR_SENSOR_PIN, INPUT);
+  pinMode(IR_SENSOR_VCC_PIN, OUTPUT);
+  digitalWrite(IR_SENSOR_VCC_PIN, HIGH); // 3.3V anlegen (GPIO HIGH)
 
-  // Buttons
-  pinMode(BTN_START, INPUT_PULLUP);
-  pinMode(BTN_STOP, INPUT_PULLUP);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+  }
+  server.on("/", handleRoot);
+  server.begin();
 
-  // PWM Setup ESP32
-  ledcSetup(CH_LEFT,  20000, 8); // 20 kHz, 8 Bit
-  ledcSetup(CH_RIGHT, 20000, 8);
-
-  ledcAttachPin(PWM_LEFT,  CH_LEFT);
-  ledcAttachPin(PWM_RIGHT, CH_RIGHT);
-
-  stopMotors();
+  // IP-Adresse mehrfach ausgeben, damit du sie sicher siehst
+  for (int i = 0; i < 5; ++i) {
+    Serial.print("Verbunden! ESP32 IP: ");
+    Serial.println(WiFi.localIP());
+    delay(2000);
+  }
 }
 
 void loop() {
-  // Start gedrückt?
-  if (digitalRead(BTN_START) == LOW) {
-    driving = true;
+  server.handleClient();
+
+  // Serial-Ausgabe alle 200ms
+  if (millis() - lastSerialPrint >= serialInterval) {
+    int sensorValue = analogRead(IR_SENSOR_PIN);
+    Serial.print("IR Sensor Wert: ");
+    Serial.println(sensorValue);
+    lastSerialPrint = millis();
   }
-
-  // Stop gedrückt?
-  if (digitalRead(BTN_STOP) == LOW) {
-    driving = false;
-  }
-
-  if (driving) {
-    driveForward(BASE_SPEED);
-  } else {
-    stopMotors();
-  }
-
-  delay(10); // Entprellung light
-}
-
-// =======================
-// Funktionen
-// =======================
-
-void driveForward(int speed) {
-  int speedLeft  = speed;
-  int speedRight = speed * SCALE_SMALL;
-
-  speedRight = constrain(speedRight, 0, 255);
-
-  digitalWrite(DIR_LEFT, HIGH);   // Richtung vorwärts
-  digitalWrite(DIR_RIGHT, HIGH);
-
-  ledcWrite(CH_LEFT,  speedLeft);
-  ledcWrite(CH_RIGHT, speedRight);
-}
-
-void stopMotors() {
-  ledcWrite(CH_LEFT,  0);
-  ledcWrite(CH_RIGHT, 0);
 }

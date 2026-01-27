@@ -20,6 +20,11 @@
 #define Pin_22 22 //
 #define Pin_23 23 //
 
+#define Enable 16
+#define Disable 4
+
+
+
 #define IR_SENSOR_PIN 34      // Sensor-Ausgang
 #define IR_SENSOR_VCC_PIN 32  // Sensor-Versorgung
 

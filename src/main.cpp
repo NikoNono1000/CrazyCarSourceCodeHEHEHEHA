@@ -2,6 +2,19 @@
 #include <WiFi.h>
 #include <WebServer.h>
 
+#define speed 255;
+#define M_scale_L 0.648; // if scale R is 1
+#define M_scale_R 1.543; // if scale L is 1
+#define L_speed speed * M_scale_L;          
+#define R_speed speed;
+#define Des_dist 15; // desired distance in cm
+// 1 cm in L_sid_dis value = 
+// 1 cm in R_sid_dis value = 
+#define Front 80; // desirent front dis in m
+// 1 cm in front value = 
+#define 
+
+
 #define IR_SENSOR_PIN 34      // Sensor-Ausgang
 #define IR_SENSOR_VCC_PIN 32  // Sensor-Versorgung
 

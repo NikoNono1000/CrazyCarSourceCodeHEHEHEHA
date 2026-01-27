@@ -12,8 +12,13 @@
 // 1 cm in R_sid_dis value = 
 #define Front 80; // desirent front dis in m
 // 1 cm in front value = 
-#define 
 
+
+
+#define Pin_19 19; // 
+#define Pin_21 21; //
+#define Pin_22 22; //
+#define Pin_23 23; //
 
 #define IR_SENSOR_PIN 34      // Sensor-Ausgang
 #define IR_SENSOR_VCC_PIN 32  // Sensor-Versorgung
@@ -61,6 +66,8 @@ void setup() {
     Serial.println(WiFi.localIP());
     delay(2000);
   }
+  pinMode(Pin_19, OUTPUT);
+  digitalWrite(Pin_19, HIGH);
 }
 
 void loop() {

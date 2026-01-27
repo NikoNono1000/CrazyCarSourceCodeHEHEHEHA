@@ -68,6 +68,18 @@ void setup() {
   }
   pinMode(Pin_19, OUTPUT);
   digitalWrite(Pin_19, HIGH);
+   }
+  pinMode(Pin_21, OUTPUT);
+  digitalWrite(Pin_21, LOW);
+   
+  pinMode(Pin_22, OUTPUT);
+  digitalWrite(Pin_22, LOW);
+  pinMode(Pin_23, OUTPUT);
+  digitalWrite(Pin_23, LOW);
+  
+  
+
+
 }
 
 void loop() {

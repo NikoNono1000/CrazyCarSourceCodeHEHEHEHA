@@ -69,7 +69,7 @@ int Front_sensor_value = 0;
 int L_sensor_old = 0;
 int R_sensor_old = 0;
 
-int run = 1;
+int run = 0;
 
 
 

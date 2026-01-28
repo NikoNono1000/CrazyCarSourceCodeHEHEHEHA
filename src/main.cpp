@@ -96,6 +96,7 @@ void setup() {
 
 
 void loop() {
+    Serial.begin(115200);
     if (digitalRead(Enable_pin) == LOW) { // Button gedrückt (LOW)
         run = 1;
     }

@@ -73,13 +73,13 @@ void setup() {
     delay(2000);
   }*/
   pinMode(Pin_19, OUTPUT);
-  digitalWrite(Pin_19, HIGH);
+  digitalWrite(Pin_19, LOW);
   
   pinMode(Pin_21, OUTPUT);
   digitalWrite(Pin_21, LOW);
    
   pinMode(Pin_22, OUTPUT);
-  digitalWrite(Pin_22, LOW);
+  digitalWrite(Pin_22, HIGH);
   pinMode(Pin_23, OUTPUT);
   digitalWrite(Pin_23, LOW);
   

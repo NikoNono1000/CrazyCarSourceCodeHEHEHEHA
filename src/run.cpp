@@ -1,3 +1,4 @@
+/*
 #include <Arduino.h>
 
 //=================== Velocity ==================
@@ -47,8 +48,8 @@
 
 #define R_vor_pin
 #define R_back_pin
-#define L_vor_pin
-#define L_back_pin
+#define L_vor_pin 19
+#define L_back_pin 21
 
 #define Enable_pin 16
 #define Disable_pin 4
@@ -83,8 +84,8 @@ void setup() {
 
 
 
-    pinMode(Enable_pin, OUTPUT);
-    pinMode(Disable_pin, OUTPUT);
+    pinMode(Enable_pin, INPUT);
+    pinMode(Disable_pin, INPUT);
 
     pinMode(R_back_pin, OUTPUT);
     pinMode(R_vor_pin, OUTPUT);
@@ -264,3 +265,4 @@ void stopMotors() {
     digitalWrite(L_back_pin, LOW);
     digitalWrite(R_back_pin, LOW);
 }
+    */

@@ -76,9 +76,7 @@ void stopMotors();
 
 
 void setup() {
-
-
-
+    Serial.begin(115200);
     pinMode(Enable_pin, INPUT_PULLUP);
     pinMode(Disable_pin, INPUT_PULLUP);
 
@@ -165,7 +163,7 @@ void loop() {
 
     Serial.print("L_sensor: "); Serial.print(L_sensor_value);
     Serial.print(" | R_sensor: "); Serial.print(R_sensor_value);
-    Serial.print(" | Front_sensor: "); Serial.print(Front_sensor_value);
+    Serial.print(" | Front_sensor: "); Serial.println(Front_sensor_value);
     
     delay(50); // Small delay for loop stability
 }

@@ -1,4 +1,3 @@
-
 #include <Arduino.h>
 
 //=================== Velocity ==================
@@ -80,8 +79,8 @@ void setup() {
 
 
 
-    pinMode(Enable_pin, INPUT);
-    pinMode(Disable_pin, INPUT);
+    pinMode(Enable_pin, INPUT_PULLUP);
+    pinMode(Disable_pin, INPUT_PULLUP);
 
     pinMode(R_back_pin, OUTPUT);
     pinMode(R_vor_pin, OUTPUT);
@@ -99,10 +98,10 @@ void setup() {
 
 
 void loop() {
-    if (digitalRead(Enable_pin) == 1) {
+    if (digitalRead(Enable_pin) == LOW) { // Button gedrückt (LOW)
         run = 1;
     }
-    if (digitalRead(Disable_pin) == 1) {
+    if (digitalRead(Disable_pin) == LOW) { // Button gedrückt (LOW)
         run = 0;
         stopMotors();
     }
@@ -257,4 +256,3 @@ void stopMotors() {
     digitalWrite(L_back_pin, LOW);
     digitalWrite(R_back_pin, LOW);
 }
-    

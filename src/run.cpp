@@ -84,6 +84,8 @@ void stopMotors();
 
 void setup() {
 
+    Serial.begin(115200);
+
 
 
     pinMode(Enable_pin, INPUT);
@@ -173,6 +175,22 @@ void loop() {
             delay(turn_time);
         }
     }
+
+    Serial.print("L_sens: ");
+    Serial.print(L_sensor_value);
+    Serial.print(" | R_sens: ");
+    Serial.print(R_sensor_value);
+    Serial.print(" | F_sens: ");
+    Serial.print(Front_sensor_value);
+    Serial.print(" | L_sens_old: ");
+    Serial.print(L_sensor_old);
+    Serial.print(" | R_sens_old: ");
+    Serial.print(R_sensor_old);
+    Serial.print(" | L_v:");
+    Serial.print(analogRead(L_vor_pin));
+    Serial.print(" | R_v:");
+    Serial.println(analogRead(R_vor_pin));
+
     
     // Store current sensor values as old values for next iteration
     L_sensor_old = L_sensor_value;

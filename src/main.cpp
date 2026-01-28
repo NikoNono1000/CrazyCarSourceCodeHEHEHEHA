@@ -52,7 +52,7 @@ void setup() {
   Serial.begin(115200);
   for (int i = 0; i < 10; ++i) {
     Serial.println("Serial funktioniert!");
-    delay(1000);
+    delay(100);
   }
   /*
   pinMode(IR_SENSOR_PIN, INPUT);

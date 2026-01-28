@@ -33,13 +33,13 @@
 
 
 // ================== Pins ==================
-#define L_dist
-#define R_dist
-#define Front_dist
+//#define L_dist
+//#define R_dist
+//#define Front_dist
 
-#define L_sensor_pin
-#define R_sensor_pin
-#define Front_sensor_pin
+#define L_sensor_pin 32
+#define R_sensor_pin 34
+#define Front_sensor_pin 35
 
 #define Pin_19 19 
 #define Pin_21 21 
@@ -52,7 +52,9 @@
 #define L_back_pin 21
 
 #define Enable_pin 16
-#define Disable_pin 4
+// Weiß
+#define Disable_pin 4 
+//Rot 
 
 
 

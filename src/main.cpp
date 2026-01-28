@@ -63,7 +63,7 @@ int Front_sensor_value = 0;
 int L_sensor_old = 0;
 int R_sensor_old = 0;
 
-
+int run = 0;
 
 
 // ================ Function prototypes ================
@@ -95,86 +95,78 @@ void setup() {
     pinMode(R_sensor_pin, INPUT);
     pinMode(Front_sensor_pin, INPUT);
 
-    // The following lines are redundant because these pins are already set above:
-    // pinMode(L_vor_pin, OUTPUT);
-    // pinMode(L_back_pin, OUTPUT);
-    // pinMode(R_vor_pin, OUTPUT);
-    // pinMode(R_back_pin, OUTPUT);
-    // So we can safely remove the undefined Pin_19, Pin_21, Pin_22, Pin_23 lines.
-    
-  
-    digitalWrite(Enable_pin, HIGH);
-    digitalWrite(Disable_pin, LOW);
-
-    digitalWrite(R_back_pin, LOW);
-    digitalWrite(R_vor_pin, LOW);
-    digitalWrite(L_back_pin, LOW);
-    digitalWrite(L_vor_pin, LOW);
-
-    // The following lines are redundant because these pins are already set above:
-    // digitalWrite(L_vor_pin, LOW);
-    // digitalWrite(L_back_pin, LOW);
-    // digitalWrite(R_vor_pin, LOW);
-    // digitalWrite(R_back_pin, LOW);
-    // So we can safely remove the undefined Pin_19, Pin_21, Pin_22, Pin_23 lines.
-
 }
 
 
 void loop() {
-    // Read all sensor values
-    readSensors();
-    
-    // Decision logic
-    // 1. If front sensor detects obstacle is far enough, check side sensors
-    if (Front_sensor_value < Front) {
-        
-        // 2. Check for new openings (turns)
-        if (L_sensor_old * n_t < L_sensor_value) {
-            // New opening on left detected - turn left
-            turnLeft();
-            delay(turn_time);
-            followLeftWall();
-        }
-        else if (R_sensor_old * n_t < R_sensor_value) {
-            // New opening on right detected - turn right
-            turnRight();
-            delay(turn_time);
-            followRightWall();
-        }
-        // 3. Follow the closer wall
-        else if (L_sensor_value * n_default < R_sensor_value) {
-            // Left wall is closer - follow left
-            followLeftWall();
-        }
-        else if (R_sensor_value * n_default < L_sensor_value) {
-            // Right wall is closer - follow right
-            followRightWall();
-        }
-        else {
-            // Both walls equidistant or no walls - go straight
-            goStraight();
-        }
+    if (digitalRead(Enable_pin) == 1) {
+        run = 1;
     }
-    else {
-        // Front obstacle too close - stop or turn
+    if (digitalRead(Disable_pin) == 1) {
+        run = 0;
         stopMotors();
-        delay(100);
-        
-        // Decide which way to turn based on side distances
-        if (L_sensor_value > R_sensor_value) {
-            turnLeft();
-            delay(turn_time);
+    }
+
+
+    if (run == 1) {
+            // Read all sensor values
+            readSensors();
+            
+            // Decision logic
+            // 1. If front sensor detects obstacle is far enough, check side sensors
+        if (Front_sensor_value < Front) {
+            
+            // 2. Check for new openings (turns)
+            if (L_sensor_old * n_t < L_sensor_value) {
+                // New opening on left detected - turn left
+                turnLeft();
+                delay(turn_time);
+                followLeftWall();
+            }
+            else if (R_sensor_old * n_t < R_sensor_value) {
+                // New opening on right detected - turn right
+                turnRight();
+                delay(turn_time);
+                followRightWall();
+            }
+            // 3. Follow the closer wall
+            else if (L_sensor_value * n_default < R_sensor_value) {
+                // Left wall is closer - follow left
+                followLeftWall();
+            }
+            else if (R_sensor_value * n_default < L_sensor_value) {
+                // Right wall is closer - follow right
+                followRightWall();
+            }
+            else {
+                // Both walls equidistant or no walls - go straight
+                goStraight();
+            }
         }
         else {
-            turnRight();
-            delay(turn_time);
+            // Front obstacle too close - stop or turn
+            stopMotors();
+            delay(100);
+            
+            // Decide which way to turn based on side distances
+            if (L_sensor_value > R_sensor_value) {
+                turnLeft();
+                delay(turn_time);
+            }
+            else {
+                turnRight();
+                delay(turn_time);
+            }
         }
     }
     
     // Store current sensor values as old values for next iteration
     L_sensor_old = L_sensor_value;
     R_sensor_old = R_sensor_value;
+
+    Serial.print("L_sensor: "); Serial.print(L_sensor_value);
+    Serial.print(" | R_sensor: "); Serial.print(R_sensor_value);
+    Serial.print(" | Front_sensor: "); Serial.print(Front_sensor_value);
     
     delay(50); // Small delay for loop stability
 }

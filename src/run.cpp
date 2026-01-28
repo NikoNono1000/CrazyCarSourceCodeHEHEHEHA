@@ -69,6 +69,8 @@ int Front_sensor_value = 0;
 int L_sensor_old = 0;
 int R_sensor_old = 0;
 
+int run = 0;
+
 
 
 
@@ -83,6 +85,8 @@ void stopMotors();
 
 
 void setup() {
+
+    Serial.begin(115200);
 
 
 
@@ -124,55 +128,84 @@ void setup() {
 
 
 void loop() {
-    // Read all sensor values
-    readSensors();
-    
-    // Decision logic
-    // 1. If front sensor detects obstacle is far enough, check side sensors
-    if (Front_sensor_value < Front) {
-        
-        // 2. Check for new openings (turns)
-        if (L_sensor_old * n_t < L_sensor_value) {
-            // New opening on left detected - turn left
-            turnLeft();
-            delay(turn_time);
-            followLeftWall();
-        }
-        else if (R_sensor_old * n_t < R_sensor_value) {
-            // New opening on right detected - turn right
-            turnRight();
-            delay(turn_time);
-            followRightWall();
-        }
-        // 3. Follow the closer wall
-        else if (L_sensor_value * n_default < R_sensor_value) {
-            // Left wall is closer - follow left
-            followLeftWall();
-        }
-        else if (R_sensor_value * n_default < L_sensor_value) {
-            // Right wall is closer - follow right
-            followRightWall();
-        }
-        else {
-            // Both walls equidistant or no walls - go straight
-            goStraight();
-        }
+
+    if (digitalRead(Enable_pin) == HIGH) {
+        run = 1;
     }
-    else {
-        // Front obstacle too close - stop or turn
+    else if (digitalRead(Disable_pin) == HIGH) {
+        run = 0;
         stopMotors();
-        delay(100);
+
+    }
+
+    if (run == 1) {
+    
+        // Read all sensor values
+        readSensors();
         
-        // Decide which way to turn based on side distances
-        if (L_sensor_value > R_sensor_value) {
-            turnLeft();
-            delay(turn_time);
+        // Decision logic
+        // 1. If front sensor detects obstacle is far enough, check side sensors
+        if (Front_sensor_value < Front) {
+            
+            // 2. Check for new openings (turns)
+            if (L_sensor_old * n_t < L_sensor_value) {
+                // New opening on left detected - turn left
+                turnLeft();
+                delay(turn_time);
+                followLeftWall();
+            }
+            else if (R_sensor_old * n_t < R_sensor_value) {
+                // New opening on right detected - turn right
+                turnRight();
+                delay(turn_time);
+                followRightWall();
+            }
+            // 3. Follow the closer wall
+            else if (L_sensor_value * n_default < R_sensor_value) {
+                // Left wall is closer - follow left
+                followLeftWall();
+            }
+            else if (R_sensor_value * n_default < L_sensor_value) {
+                // Right wall is closer - follow right
+                followRightWall();
+            }
+            else {
+                // Both walls equidistant or no walls - go straight
+                goStraight();
+            }
         }
         else {
-            turnRight();
-            delay(turn_time);
+            // Front obstacle too close - stop or turn
+            stopMotors();
+            delay(100);
+            
+            // Decide which way to turn based on side distances
+            if (L_sensor_value > R_sensor_value) {
+                turnLeft();
+                delay(turn_time);
+            }
+            else {
+                turnRight();
+                delay(turn_time);
+            }
         }
     }
+
+    Serial.print("L_sens: ");
+    Serial.print(L_sensor_value);
+    Serial.print(" | R_sens: ");
+    Serial.print(R_sensor_value);
+    Serial.print(" | F_sens: ");
+    Serial.print(Front_sensor_value);
+    Serial.print(" | L_sens_old: ");
+    Serial.print(L_sensor_old);
+    Serial.print(" | R_sens_old: ");
+    Serial.print(R_sensor_old);
+    Serial.print(" | L_v:");
+    Serial.print(analogRead(L_vor_pin));
+    Serial.print(" | R_v:");
+    Serial.println(analogRead(R_vor_pin));
+
     
     // Store current sensor values as old values for next iteration
     L_sensor_old = L_sensor_value;

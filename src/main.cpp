@@ -1,102 +1,268 @@
-#include <Arduino.h>
-#include <WiFi.h>
-#include <WebServer.h>
 
-#define speed 255;
-#define M_scale_L 0.648; // if scale R is 1
-#define M_scale_R 1.543; // if scale L is 1
-#define L_speed speed * M_scale_L;          
-#define R_speed speed;
-#define Des_dist 15; // desired distance in cm
+#include <Arduino.h>
+
+//=================== Velocity ==================
+#define speed 255
+
+#define M_scale_L 0.648 // if scale R is 1
+#define M_scale_R 1.543 // if scale L is 1
+
+#define L_speed speed * M_scale_L          
+#define R_speed speed
+
+#define turn_speed 180
+#define turn_time 200
+
+#define L_turn_speed turn_speed*M_scale_L
+#define R_turn_speed turn_speed
+
+
+
+// ================== Distances ==================
+#define Des_dist 15 
+    // desired distance in cm
 // 1 cm in L_sid_dis value = 
 // 1 cm in R_sid_dis value = 
-#define Front 80; // desirent front dis in m
+#define Front 80 
+    // desirent front dis in m
 // 1 cm in front value = 
 
-
-
-#define Pin_19 19 // 
-#define Pin_21 21 //
-#define Pin_22 22 //
-#define Pin_23 23 //
-
-#define Enable 16
-#define Disable 4
+#define n_default 2
+#define n_t 5
 
 
 
-#define IR_SENSOR_PIN 34      // Sensor-Ausgang
-#define IR_SENSOR_VCC_PIN 32  // Sensor-Versorgung
+// ================== Pins ==================
+#define L_dist
+#define R_dist
+#define Front_dist
 
-const char* ssid = "Niko_wifi";         // <-- hier anpassen
-const char* password = "N1224M0525R0908!"; // <-- hier anpassen
+#define L_sensor_pin 34
+#define R_sensor_pin 35
+#define Front_sensor_pin 32
 
-WebServer server(80);
 
-unsigned long lastSerialPrint = 0;
-const unsigned long serialInterval = 200; // ms
+#define R_vor_pin 22
+#define R_back_pin 23
+#define L_vor_pin 19
+#define L_back_pin 21
 
-void handleRoot() {
-  int sensorValue = analogRead(IR_SENSOR_PIN);
-  String html = "<html><head><meta http-equiv='refresh' content='0.5'></head><body>";
-  html += "<h1>IR Sensor Wert: ";
-  html += sensorValue;
-  html += "</h1>";
-  html += "<p>ESP32 IP: ";
-  html += WiFi.localIP().toString();
-  html += "</p></body></html>";
-  server.send(200, "text/html", html);
-}
+#define Enable_pin 16
+#define Disable_pin 4
+
+
+
+// ================== Variables ==================
+int Drehzahl_sensor_L = 0;
+int Drehzahl_sensor_R = 0;
+
+int L_sensor_value = 0;
+int R_sensor_value = 0;
+int Front_sensor_value = 0;
+
+int L_sensor_old = 0;
+int R_sensor_old = 0;
+
+
+
+
+// ================ Function prototypes ================
+void readSensors();
+void goStraight();
+void turnLeft();
+void turnRight();
+void followLeftWall();
+void followRightWall();
+void stopMotors();
+
 
 void setup() {
-  Serial.begin(115200);
-  for (int i = 0; i < 10; ++i) {
-    Serial.println("Serial funktioniert!");
-    delay(100);
-  }
-  /*
-  pinMode(IR_SENSOR_PIN, INPUT);
-  pinMode(IR_SENSOR_VCC_PIN, OUTPUT);
-  digitalWrite(IR_SENSOR_VCC_PIN, HIGH); // 3.3V anlegen (GPIO HIGH)
 
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-  }
-  server.on("/", handleRoot);
-  server.begin();
 
-  // IP-Adresse mehrfach ausgeben, damit du sie sicher siehst
-  for (int i = 0; i < 5; ++i) {
-    Serial.print("Verbunden! ESP32 IP: ");
-    Serial.println(WiFi.localIP());
-    delay(2000);
-  }*/
-  pinMode(Pin_19, OUTPUT);
-  digitalWrite(Pin_19, HIGH);
-  
-  pinMode(Pin_21, OUTPUT);
-  digitalWrite(Pin_21, LOW);
-   
-  pinMode(Pin_22, OUTPUT);
-  digitalWrite(Pin_22, HIGH);
-  pinMode(Pin_23, OUTPUT);
-  digitalWrite(Pin_23, LOW);
-  
-  
 
+    pinMode(Enable_pin, INPUT);
+    pinMode(Disable_pin, INPUT);
+
+    pinMode(R_back_pin, OUTPUT);
+    pinMode(R_vor_pin, OUTPUT);
+    pinMode(L_back_pin, OUTPUT);
+    pinMode(L_vor_pin, OUTPUT);
+
+    pinMode(Drehzahl_sensor_L, INPUT);
+    pinMode(Drehzahl_sensor_R, INPUT);
+
+    pinMode(L_sensor_pin, INPUT);
+    pinMode(R_sensor_pin, INPUT);
+    pinMode(Front_sensor_pin, INPUT);
+
+    // The following lines are redundant because these pins are already set above:
+    // pinMode(L_vor_pin, OUTPUT);
+    // pinMode(L_back_pin, OUTPUT);
+    // pinMode(R_vor_pin, OUTPUT);
+    // pinMode(R_back_pin, OUTPUT);
+    // So we can safely remove the undefined Pin_19, Pin_21, Pin_22, Pin_23 lines.
+    
+  
+    digitalWrite(Enable_pin, HIGH);
+    digitalWrite(Disable_pin, LOW);
+
+    digitalWrite(R_back_pin, LOW);
+    digitalWrite(R_vor_pin, LOW);
+    digitalWrite(L_back_pin, LOW);
+    digitalWrite(L_vor_pin, LOW);
+
+    // The following lines are redundant because these pins are already set above:
+    // digitalWrite(L_vor_pin, LOW);
+    // digitalWrite(L_back_pin, LOW);
+    // digitalWrite(R_vor_pin, LOW);
+    // digitalWrite(R_back_pin, LOW);
+    // So we can safely remove the undefined Pin_19, Pin_21, Pin_22, Pin_23 lines.
 
 }
+
 
 void loop() {
- /* server.handleClient();
-
-  // Serial-Ausgabe alle 200ms
-  if (millis() - lastSerialPrint >= serialInterval) {
-    int sensorValue = analogRead(IR_SENSOR_PIN);
-    Serial.print("IR Sensor Wert: ");
-    Serial.println(sensorValue);
-    lastSerialPrint = millis();
-  }
-    */
+    // Read all sensor values
+    readSensors();
+    
+    // Decision logic
+    // 1. If front sensor detects obstacle is far enough, check side sensors
+    if (Front_sensor_value < Front) {
+        
+        // 2. Check for new openings (turns)
+        if (L_sensor_old * n_t < L_sensor_value) {
+            // New opening on left detected - turn left
+            turnLeft();
+            delay(turn_time);
+            followLeftWall();
+        }
+        else if (R_sensor_old * n_t < R_sensor_value) {
+            // New opening on right detected - turn right
+            turnRight();
+            delay(turn_time);
+            followRightWall();
+        }
+        // 3. Follow the closer wall
+        else if (L_sensor_value * n_default < R_sensor_value) {
+            // Left wall is closer - follow left
+            followLeftWall();
+        }
+        else if (R_sensor_value * n_default < L_sensor_value) {
+            // Right wall is closer - follow right
+            followRightWall();
+        }
+        else {
+            // Both walls equidistant or no walls - go straight
+            goStraight();
+        }
+    }
+    else {
+        // Front obstacle too close - stop or turn
+        stopMotors();
+        delay(100);
+        
+        // Decide which way to turn based on side distances
+        if (L_sensor_value > R_sensor_value) {
+            turnLeft();
+            delay(turn_time);
+        }
+        else {
+            turnRight();
+            delay(turn_time);
+        }
+    }
+    
+    // Store current sensor values as old values for next iteration
+    L_sensor_old = L_sensor_value;
+    R_sensor_old = R_sensor_value;
+    
+    delay(50); // Small delay for loop stability
 }
+
+
+// ========================= Rsensor Reading ========================
+void readSensors() {
+    L_sensor_value = analogRead(L_sensor_pin);
+    R_sensor_value = analogRead(R_sensor_pin);
+    Front_sensor_value = analogRead(Front_sensor_pin);
+}
+
+
+// ========================= straight forward ========================
+void goStraight() {
+    analogWrite(L_vor_pin, L_speed);
+    analogWrite(R_vor_pin, R_speed);
+    digitalWrite(L_back_pin, LOW);
+    digitalWrite(R_back_pin, LOW);
+}
+
+
+// Turn left (left velocity forwared slower, right velocity forward default)
+void turnLeft() {
+    analogWrite(L_vor_pin, L_turn_speed);
+    analogWrite(R_vor_pin, R_speed);
+    digitalWrite(L_back_pin, LOW);
+    digitalWrite(R_back_pin, LOW);
+
+}
+
+
+// Turn right (right velocity forwared slower, left velocity forward default)
+void turnRight() {
+    analogWrite(R_vor_pin, R_turn_speed);
+    analogWrite(L_vor_pin, L_speed);
+    digitalWrite(R_back_pin, LOW);
+    digitalWrite(L_back_pin, LOW);
+}
+
+
+// Follow left wall - adjust to maintain desired distance
+void followLeftWall() {
+    if (L_sensor_value < Des_dist) {
+        // Too close to left wall - steer slightly right
+        analogWrite(L_vor_pin, L_speed);
+        analogWrite(R_vor_pin, R_speed * 0.8);
+    }
+    else if (L_sensor_value > Des_dist * 1.5) {
+        // Too far from left wall - steer slightly left
+        analogWrite(L_vor_pin, L_speed * 0.8);
+        analogWrite(R_vor_pin, R_speed);
+    }
+    else {
+        // Good distance - go straightv slo
+        goStraight();
+    }
+    digitalWrite(L_back_pin, LOW);
+    digitalWrite(R_back_pin, LOW);
+}
+
+
+// Follow right wall - adjust to maintain desired distance
+void followRightWall() {
+    if (R_sensor_value < Des_dist) {
+        // Too close to right wall - steer slightly left
+        analogWrite(L_vor_pin, L_speed * 0.8);
+        analogWrite(R_vor_pin, R_speed );
+    }
+    else if (R_sensor_value > Des_dist * 1.5) {
+        // Too far from right wall - steer slightly right
+        analogWrite(L_vor_pin, L_speed);
+        analogWrite(R_vor_pin, R_speed * 0.8);
+    }
+    else {
+        // Good distance - go straight
+        goStraight();
+    }
+    digitalWrite(L_back_pin, LOW);
+    digitalWrite(R_back_pin, LOW);
+}
+
+
+// Stop all motors
+void stopMotors() {
+    analogWrite(L_vor_pin, 0);
+    analogWrite(R_vor_pin, 0);
+    digitalWrite(L_back_pin, LOW);
+    digitalWrite(R_back_pin, LOW);
+}
+    

@@ -10,7 +10,7 @@
 #define R_speed speed
 
 #define turn_speed 180
-#define turn_time 200
+#define turn_time 500
 
 #define L_turn_speed turn_speed*M_scale_L
 #define R_turn_speed turn_speed
@@ -22,7 +22,7 @@
     // desired distance in cm
 // 1 cm in L_sid_dis value = 
 // 1 cm in R_sid_dis value = 
-#define Front 80 
+#define Front 800
     // desirent front dis in m
 // 1 cm in front value = 
 
@@ -145,7 +145,7 @@ void loop() {
         else {
             // Front obstacle too close - stop or turn
             stopMotors();
-            delay(100);
+
             
             // Decide which way to turn based on side distances
             if (L_sensor_value > R_sensor_value) {
@@ -212,11 +212,11 @@ void followLeftWall() {
     if (L_sensor_value < Des_dist) {
         // Too close to left wall - steer slightly right
         analogWrite(L_vor_pin, L_speed);
-        analogWrite(R_vor_pin, R_speed * 0.1);
+        analogWrite(R_vor_pin, R_speed * 0.8);
     }
     else if (L_sensor_value > Des_dist * 1.5) {
         // Too far from left wall - steer slightly left
-        analogWrite(L_vor_pin, L_speed * 0.1);
+        analogWrite(L_vor_pin, L_speed * 0.8);
         analogWrite(R_vor_pin, R_speed);
     }
     else {

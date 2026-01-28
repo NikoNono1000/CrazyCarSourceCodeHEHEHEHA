@@ -212,11 +212,11 @@ void followLeftWall() {
     if (L_sensor_value < Des_dist) {
         // Too close to left wall - steer slightly right
         analogWrite(L_vor_pin, L_speed);
-        analogWrite(R_vor_pin, R_speed * 0.8);
+        analogWrite(R_vor_pin, R_speed * 0.1);
     }
     else if (L_sensor_value > Des_dist * 1.5) {
         // Too far from left wall - steer slightly left
-        analogWrite(L_vor_pin, L_speed * 0.8);
+        analogWrite(L_vor_pin, L_speed * 0.1);
         analogWrite(R_vor_pin, R_speed);
     }
     else {

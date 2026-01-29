@@ -1,4 +1,6 @@
 #include <Arduino.h>
+#include <Wire.h>
+#include <Adafruit_VL53L0X.h> // Adafruit-Version des VL53L0X-Treibers verwenden
 
 //=================== Velocity ==================
 #define speed 255
@@ -32,13 +34,16 @@
 
 
 // ================== Pins ==================
-#define L_dist
+//#define L_dist   // entfällt
 #define R_dist
 #define Front_dist
 
-#define L_sensor_pin 34
-#define R_sensor_pin 35
-#define Front_sensor_pin 32
+//#define L_sensor_pin 32   // entfällt
+#define R_sensor_pin 34
+#define Front_sensor_pin 35
+
+#define SDA_PIN 14
+#define SCL_PIN 27
 
 
 #define R_vor_pin 22
@@ -55,15 +60,18 @@
 int Drehzahl_sensor_L = 0;
 int Drehzahl_sensor_R = 0;
 
-int L_sensor_value = 0;
+//int L_sensor_value = 0;   // entfällt
 int R_sensor_value = 0;
 int Front_sensor_value = 0;
 
-int L_sensor_old = 0;
+//int L_sensor_old = 0;     // entfällt
 int R_sensor_old = 0;
 
-int run = 0;
+int L_sensor_value = 0; // digitaler Wert (in cm)
+int L_sensor_old = 0;
 
+// ================ I2C Sensor Objekt ================
+Adafruit_VL53L0X l_sensor; // Adafruit-Objekt verwenden
 
 // ================ Function prototypes ================
 void readSensors();
@@ -77,8 +85,19 @@ void stopMotors();
 
 void setup() {
     Serial.begin(115200);
-    pinMode(Enable_pin, INPUT_PULLUP);
-    pinMode(Disable_pin, INPUT_PULLUP);
+
+    // I2C für digitalen Sensor initialisieren
+    Wire.begin(SDA_PIN, SCL_PIN);
+    if (!l_sensor.begin()) {
+        Serial.println("Fehler: VL53L0X nicht gefunden!");
+        while (1);
+    }
+        l_sensor.setTimeout(500);
+        if (!l_sensor.init()) {
+            Serial.println("Fehler: VL53L0X nicht gefunden!");
+            while (1);
+        }
+        l_sensor.startContinuous(); // Not available in Adafruit_VL53L0X
 
     pinMode(R_back_pin, OUTPUT);
     pinMode(R_vor_pin, OUTPUT);
@@ -88,15 +107,24 @@ void setup() {
     pinMode(Drehzahl_sensor_L, INPUT);
     pinMode(Drehzahl_sensor_R, INPUT);
 
-    pinMode(L_sensor_pin, INPUT);
-    pinMode(R_sensor_pin, INPUT);
-    pinMode(Front_sensor_pin, INPUT);
-
+    // Entferne pinMode für die analogen Sensorpins!
 }
 
 
 void loop() {
-    Serial.begin(115200);
+    // Test: Nur jeweils einen Sensor anschließen und die Werte beobachten!
+    // 1. Nur rechter Sensor angeschlossen: Wie verhalten sich L_raw und R_raw?
+    // 2. Nur linker Sensor angeschlossen: Wie verhalten sich L_raw und R_raw?
+    // 3. Nur Frontsensor angeschlossen: Wie verhalten sich F_raw?
+
+    // Debug-Ausgabe: Sensorwerte und Warnung bei dauerhaft 0
+    Serial.print("L_digital: "); Serial.print(L_sensor_value);
+    if (L_sensor_value == 0) Serial.print(" [WARN: L=0]");
+    Serial.print(" | R_raw: "); Serial.print(analogRead(R_sensor_pin));
+    if (analogRead(R_sensor_pin) == 0) Serial.print(" [WARN: R=0]");
+    Serial.print(" | F_raw: "); Serial.println(analogRead(Front_sensor_pin));
+    delay(500);
+
     if (digitalRead(Enable_pin) == LOW) { // Button gedrückt (LOW)
         run = 1;
     }
@@ -162,17 +190,24 @@ void loop() {
     L_sensor_old = L_sensor_value;
     R_sensor_old = R_sensor_value;
 
-    Serial.print("L_sensor: "); Serial.print(L_sensor_value);
-    Serial.print(" | R_sensor: "); Serial.print(R_sensor_value);
-    Serial.print(" | Front_sensor: "); Serial.println(Front_sensor_value);
-    
+    // Testausgabe: Direkte Messung der Sensorpins
+    // Serial.print("L_raw: "); Serial.print(analogRead(L_sensor_pin));
+    // Serial.print(" | R_raw: "); Serial.print(analogRead(R_sensor_pin));
+    // Serial.print(" | F_raw: "); Serial.println(analogRead(Front_sensor_pin));
     delay(50); // Small delay for loop stability
 }
 
 
 // ========================= Rsensor Reading ========================
 void readSensors() {
-    L_sensor_value = analogRead(L_sensor_pin);
+    // Digitalen linken Sensor auslesen (in mm, umrechnen in cm)
+    VL53L0X_RangingMeasurementData_t measure;
+    l_sensor.rangingTest(&measure, false);
+    if (measure.RangeStatus != 4) { // 4 = out of range
+        L_sensor_value = measure.RangeMilliMeter / 10;
+    } else {
+        L_sensor_value = 0;
+    }
     R_sensor_value = analogRead(R_sensor_pin);
     Front_sensor_value = analogRead(Front_sensor_pin);
 }

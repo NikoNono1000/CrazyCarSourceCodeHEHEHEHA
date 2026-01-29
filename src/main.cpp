@@ -57,8 +57,10 @@
 
 
 // ================== Variables ==================
-int Drehzahl_sensor_L = 0;
-int Drehzahl_sensor_R = 0;
+volatile int run = 0; // <--- Hinzugefügt
+
+// int Drehzahl_sensor_L = 0;
+// int Drehzahl_sensor_R = 0;
 
 //int L_sensor_value = 0;   // entfällt
 int R_sensor_value = 0;
@@ -92,20 +94,17 @@ void setup() {
         Serial.println("Fehler: VL53L0X nicht gefunden!");
         while (1);
     }
-        l_sensor.setTimeout(500);
-        if (!l_sensor.init()) {
-            Serial.println("Fehler: VL53L0X nicht gefunden!");
-            while (1);
-        }
-        l_sensor.startContinuous(); // Not available in Adafruit_VL53L0X
+    // l_sensor.setTimeout(500); // Nicht in Adafruit-Lib
+    // if (!l_sensor.init()) { ... }
+    // l_sensor.startContinuous(); // Nicht in Adafruit-Lib
 
     pinMode(R_back_pin, OUTPUT);
     pinMode(R_vor_pin, OUTPUT);
     pinMode(L_back_pin, OUTPUT);
     pinMode(L_vor_pin, OUTPUT);
 
-    pinMode(Drehzahl_sensor_L, INPUT);
-    pinMode(Drehzahl_sensor_R, INPUT);
+    pinMode(Enable_pin, INPUT_PULLUP);   // <--- Hinzugefügt
+    pinMode(Disable_pin, INPUT_PULLUP);  // <--- Hinzugefügt
 
     // Entferne pinMode für die analogen Sensorpins!
 }
@@ -123,7 +122,7 @@ void loop() {
     Serial.print(" | R_raw: "); Serial.print(analogRead(R_sensor_pin));
     if (analogRead(R_sensor_pin) == 0) Serial.print(" [WARN: R=0]");
     Serial.print(" | F_raw: "); Serial.println(analogRead(Front_sensor_pin));
-    delay(500);
+    delay(50); // <--- vorher 500, jetzt 50 für schnellere Messungen
 
     if (digitalRead(Enable_pin) == LOW) { // Button gedrückt (LOW)
         run = 1;
@@ -190,21 +189,16 @@ void loop() {
     L_sensor_old = L_sensor_value;
     R_sensor_old = R_sensor_value;
 
-    // Testausgabe: Direkte Messung der Sensorpins
-    // Serial.print("L_raw: "); Serial.print(analogRead(L_sensor_pin));
-    // Serial.print(" | R_raw: "); Serial.print(analogRead(R_sensor_pin));
-    // Serial.print(" | F_raw: "); Serial.println(analogRead(Front_sensor_pin));
-    delay(50); // Small delay for loop stability
+    delay(10); // <--- vorher 50, jetzt 10 für noch schnellere Schleifen
 }
 
 
 // ========================= Rsensor Reading ========================
 void readSensors() {
     // Digitalen linken Sensor auslesen (in mm, umrechnen in cm)
-    VL53L0X_RangingMeasurementData_t measure;
-    l_sensor.rangingTest(&measure, false);
-    if (measure.RangeStatus != 4) { // 4 = out of range
-        L_sensor_value = measure.RangeMilliMeter / 10;
+    uint16_t range = l_sensor.readRange();
+    if (!l_sensor.timeoutOccurred()) {
+        L_sensor_value = range / 10;
     } else {
         L_sensor_value = 0;
     }

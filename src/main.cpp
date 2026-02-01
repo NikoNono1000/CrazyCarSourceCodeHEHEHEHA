@@ -25,9 +25,9 @@
 #define FRONT_LIMIT 18
 
 // ==== SENSORSCHWELLEN (Empfindlichkeit) ====
-const int MIN_LEFT_DIST = 17;      // zu nah an linker Wand
-const int MAX_LEFT_DIST = 23;      // zu weit weg von linker Wand
-const int MIN_FRONT_DIST = 50;     // zu nah an Hindernis vorne
+const int MIN_LEFT_DIST = 26;      // zu nah an linker Wand
+const int MAX_LEFT_DIST = 30;      // zu weit weg von linker Wand
+const int MIN_FRONT_DIST = 67;     // zu nah an Hindernis vorne
 
 // ================== PWM ==================
 #define PWM_FREQ 20000
